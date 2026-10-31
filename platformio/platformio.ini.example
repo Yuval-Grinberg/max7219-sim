@@ -1,0 +1,20 @@
+; Example platformio.ini: your normal ESP32 build plus a "sim" environment.
+; The simulator folder is copied into the project as "simulator/" (next to src/).
+
+[platformio]
+default_envs = esp32dev
+
+[env:esp32dev]
+platform = espressif32
+board = esp32dev
+framework = arduino
+monitor_speed = 115200
+lib_deps =                      ; keep your libraries here, in the ESP32 env only
+    adafruit/Adafruit GFX Library
+    https://github.com/markruys/arduino-Max72xxPanel.git
+
+[env:sim]
+platform = native
+lib_deps =                      ; empty on purpose: the simulator brings its own GFX + Max72xxPanel
+extra_scripts = pre:simulator/platformio/sim.py
+custom_sim_args = --modules 4x1 --button 0=space

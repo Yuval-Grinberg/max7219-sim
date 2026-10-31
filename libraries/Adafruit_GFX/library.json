@@ -1,0 +1,8 @@
+{
+  "name": "Adafruit GFX Library",
+  "version": "1.13.0",
+  "description": "Adafruit GFX graphics core (bundled copy for the MAX7219 simulator)",
+  "frameworks": "*",
+  "platforms": "*",
+  "build": { "srcFilter": ["+<*.cpp>", "-<glcdfont.c>"] }
+}

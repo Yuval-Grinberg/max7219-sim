@@ -1,0 +1,8 @@
+{
+  "name": "Max72xxPanel",
+  "version": "0.0.0",
+  "description": "Max72xxPanel by Mark Ruys (bundled copy for the MAX7219 simulator)",
+  "frameworks": "*",
+  "platforms": "*",
+  "dependencies": [{ "name": "Adafruit GFX Library" }]
+}
