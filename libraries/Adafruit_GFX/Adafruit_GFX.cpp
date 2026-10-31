@@ -56,9 +56,7 @@ POSSIBILITY OF SUCH DAMAGE.
 // Pointers are a peculiar case...typically 16-bit on AVR boards,
 // 32 bits elsewhere.  Try to accommodate both...
 
-// [max7219-sim] keep the simulator's pointer-sized pgm_read_pointer (pointers are 64-bit on a PC)
-#if defined(MAX7219_SIMULATOR)
-#elif !defined(__INT_MAX__) || (__INT_MAX__ > 0xFFFF)
+#if !defined(__INT_MAX__) || (__INT_MAX__ > 0xFFFF)
 #define pgm_read_pointer(addr) ((void *)pgm_read_dword(addr))
 #else
 #define pgm_read_pointer(addr) ((void *)pgm_read_word(addr))

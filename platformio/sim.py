@@ -1,5 +1,17 @@
+# PlatformIO integration for the MAX7219 simulator.
+#
+# In platformio.ini:
+#
+#   [env:sim]
+#   platform = native
+#   lib_deps =                                   ; the simulator brings its own GFX + Max72xxPanel
+#   extra_scripts = pre:simulator/platformio/sim.py
+#   custom_sim_args = --modules 4x1 --button 0=space
+#
+# Then build/run the "sim" environment, or click  sim > Custom > Simulate  in the PlatformIO sidebar.
+
 Import("env")  # noqa: F821  (provided by PlatformIO)
- 
+
 import glob
 import inspect
 import os
@@ -7,16 +19,16 @@ import re
 import shutil
 import subprocess
 import sys
- 
+
 SCRIPT = os.path.abspath(inspect.getframeinfo(inspect.currentframe()).filename)
 SIM = os.path.dirname(os.path.dirname(SCRIPT))
 WINDOWS = sys.platform.startswith("win")
- 
- 
+
+
 def log(msg):
     print("[max7219-sim] " + msg)
- 
- 
+
+
 # ---- simulator options: platformio.ini custom_sim_args + "// sim:" comments in src/ ----
 args = []
 src_dir = env.subst("$PROJECT_SRC_DIR")
@@ -35,12 +47,12 @@ ini_args = env.GetProjectOption("custom_sim_args", "")
 if ini_args:
     args.append(" ".join(ini_args.split()))
 sim_args = " ".join(a for a in args if a)
- 
- 
+
+
 def c_literal(s):
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
- 
- 
+
+
 # Written to a header so spaces and quotes don't have to survive the compiler command line.
 gen_dir = os.path.join(env.subst("$BUILD_DIR"), "max7219-sim-gen")
 os.makedirs(gen_dir, exist_ok=True)
@@ -52,17 +64,32 @@ if not os.path.exists(header_path) or open(header_path).read() != header:
         f.write(header)
 if sim_args:
     log("simulator options: " + sim_args)
- 
+
 env.Append(
     CPPPATH=[os.path.join(SIM, "core"), gen_dir],
     CPPDEFINES=["SIM_PLATFORMIO", "_USE_MATH_DEFINES"],
     CXXFLAGS=["-std=gnu++17", "-fpermissive", "-Wno-overloaded-virtual", "-Wno-sign-compare",
               "-Wno-narrowing", "-Wno-unused-variable"],
     CFLAGS=["-Wno-unused-variable"],
-    # Adafruit_GFX and Max72xxPanel bundled with the simulator
-    LIBSOURCE_DIRS=[os.path.join(SIM, "libraries")],
 )
- 
+
+# Libraries: by default the sim env uses the same lib_deps as your ESP32 env (see the README).
+# If the sim env has no lib_deps at all, fall back to the copies bundled with the simulator.
+if any(d.strip() for d in env.GetProjectOption("lib_deps", [])):
+    log("using the libraries from lib_deps")
+
+    # Adafruit GFX also contains drivers for OLED/TFT screens (built on Adafruit BusIO and real
+    # SPI/I2C hardware). A MAX7219 sketch never uses them, so they're left out of the sim build.
+    SKIP = {"Adafruit_GrayOLED.cpp", "Adafruit_SPITFT.cpp"}
+
+    def skip_display_drivers(node):
+        return None if os.path.basename(node.get_path()) in SKIP else node
+
+    env.AddBuildMiddleware(skip_display_drivers)
+else:
+    env.Append(LIBSOURCE_DIRS=[os.path.join(SIM, "libraries")])
+    log("lib_deps is empty - using the bundled Adafruit GFX + Max72xxPanel")
+
 # ---- SDL2 for the window ----
 def split_flags(text):
     """Split pkg-config output into flags. pkg-config writes a space inside a path as
@@ -91,8 +118,8 @@ def split_flags(text):
     if cur:
         out.append(cur)
     return out
- 
- 
+
+
 def pkg_config(*a):
     exe = shutil.which("pkg-config") or shutil.which("pkgconf")
     if not exe:
@@ -101,12 +128,12 @@ def pkg_config(*a):
         return split_flags(subprocess.check_output([exe] + list(a) + ["sdl2"], stderr=subprocess.DEVNULL, text=True))
     except (OSError, subprocess.CalledProcessError):
         return None
- 
- 
+
+
 def clean_path(p):
     return os.path.normpath(p).replace("\\", "/")
- 
- 
+
+
 def apply_flags(flags, compile_flags):
     """Add pkg-config style flags to the build without SCons' shell-style parser,
     which treats the backslashes in Windows paths as escape characters."""
@@ -125,8 +152,8 @@ def apply_flags(flags, compile_flags):
             env.Append(CPPDEFINES=[(name, value)] if value else [name])
         elif f:
             env.Append(CCFLAGS=[f]) if compile_flags else env.Append(LINKFLAGS=[f])
- 
- 
+
+
 cflags = pkg_config("--cflags")
 libs = pkg_config("--static", "--libs") if WINDOWS else pkg_config("--libs")
 if WINDOWS and not (cflags and any("SDL2" in f for f in cflags)):
@@ -145,7 +172,7 @@ if WINDOWS and not (cflags and any("SDL2" in f for f in cflags)):
                     "-lole32", "-loleaut32", "-lgdi32", "-luser32", "-lshell32", "-ladvapi32", "-lcfgmgr32",
                     "-luuid", "-ldinput8"]
             break
- 
+
 if cflags is not None and libs is not None:
     env.Append(CPPDEFINES=["SIM_HAVE_SDL"])
     apply_flags(cflags, True)
@@ -153,19 +180,19 @@ if cflags is not None and libs is not None:
     log("SDL2 include: " + ", ".join(clean_path(f[2:]) for f in cflags if f.startswith("-I")))
 else:
     log("SDL2 not found - the matrix will be drawn in the terminal (install SDL2 for a window).")
- 
+
 if WINDOWS:
     env.Append(LINKFLAGS=["-static"])  # no DLLs needed next to program.exe
 else:
     env.Append(LIBS=["pthread"])
- 
+
 # ---- the simulator itself ----
 env.BuildSources(
     os.path.join("$BUILD_DIR", "max7219-sim"),
     SIM,
     src_filter=["-<*>", "+<core/*.cpp>", "+<sim/*.cpp>"],
 )
- 
+
 # ---- "Simulate" button in the PlatformIO sidebar (sim > Custom > Simulate) ----
 env.AddCustomTarget(
     name="simulate",
@@ -174,4 +201,3 @@ env.AddCustomTarget(
     title="Simulate",
     description="Build and open the MAX7219 simulator",
 )
- 

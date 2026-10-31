@@ -48,11 +48,13 @@ The simulator can run as an extra PlatformIO environment in your existing ESP32 
    ```ini
    [env:sim]
    platform = native
-   lib_deps =                      ; empty on purpose: the simulator brings its own GFX + Max72xxPanel
+   lib_deps = ${env:esp32dev.lib_deps}   ; same library versions as the real build
+   lib_ignore = Adafruit BusIO           ; hardware I2C/SPI helpers, not used by MAX7219 code
+   lib_compat_mode = off                 ; let Arduino libraries build without framework = arduino
    extra_scripts = pre:simulator/platformio/sim.py
    custom_sim_args = --modules 4x1 --button 0=space
    ```
-   If your `lib_deps` live in a shared `[env]` section, the empty `lib_deps =` line above stops them leaking into the simulator. Your ESP32 environment doesn't change.
+   Replace `esp32dev` with the name of your ESP32 environment. The simulator then compiles the same Adafruit GFX and Max72xxPanel versions as your real build. When building for the simulator, the build script leaves out the OLED/TFT drivers inside Adafruit GFX, which need real SPI/I2C hardware. If you'd rather use the copies bundled in `libraries/`, write `lib_deps =` with nothing after it. Your ESP32 environment doesn't change.
 3. **Windows only:** `platform = native` uses the GCC on your PATH. Install MSYS2 and the packages from "Setup on Windows" above, add `C:\msys64\ucrt64\bin` to your Windows PATH, then restart VS Code.
 4. In the PlatformIO sidebar, open **sim → Custom → Simulate**. It builds and opens the window, and the task terminal works as your Serial monitor. From a terminal: `pio run -e sim -t simulate`.
 
@@ -110,7 +112,7 @@ core/        fake Arduino/ESP32 core (Arduino.h, SPI, Serial, String, ...)
 sim/         MAX7219 chain emulation, window, renderer
 tools/       sketchgen: turns .ino files into C++ the way the Arduino IDE does
 platformio/  PlatformIO build script (sim.py) and an example platformio.ini
-libraries/   Adafruit_GFX and Max72xxPanel (original sources, see their license.txt)
+libraries/   Adafruit_GFX and Max72xxPanel (unmodified copies, see their license.txt)
 examples/    Demo plus the four Max72xxPanel examples
 ```
 
@@ -118,4 +120,4 @@ Building by hand: `cmake -B build -DSKETCH=path/to/sketch && cmake --build build
 
 Tested with GCC and Clang on Linux, with a MinGW Windows build, and through PlatformIO's native platform on Linux. The PlatformIO setup on Windows and Visual Studio (MSVC) haven't been tested.
 
-`libraries/Adafruit_GFX/Adafruit_GFX.cpp` has one small change, marked `[max7219-sim]`, so custom fonts work with 64-bit pointers.
+The bundled libraries in `libraries/` are unmodified copies, used by `sim.bat`/`sim.sh` and by PlatformIO when the sim environment has no `lib_deps`.

@@ -13,7 +13,6 @@
 #define pgm_read_word(addr) (*(const unsigned short *)(addr))
 #define pgm_read_word_near(addr) pgm_read_word(addr)
 #define pgm_read_dword(addr) (*(const uint32_t *)(addr))
-#define pgm_read_pointer(addr) (*(void *const *)(addr))
 #define pgm_read_float(addr) (*(const float *)(addr))
 #define pgm_read_ptr(addr) (*(void *const *)(addr))
 #define memcpy_P memcpy

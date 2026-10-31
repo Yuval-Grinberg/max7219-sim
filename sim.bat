@@ -9,8 +9,14 @@ if "%~1"=="" (
   echo        sim.bat C:\Users\me\Documents\Arduino\MyMatrix --modules 4x1 --rtl
   exit /b 1
 )
-@REM if exist "C:\msys64\ucrt64\bin\gcc.exe" set "PATH=C:\msys64\ucrt64\bin;%PATH%"
-if exist "D:\Program Files\msys64\ucrt64\bin\gcc.exe" set "PATH=D:\Program Files\msys64\ucrt64\bin;%PATH%"
+rem Find MSYS2's compiler (add your own install folder here if it lives somewhere else).
+for %%D in ("D:\Program Files\msys64" "C:\msys64" "C:\Program Files\msys64" "D:\msys64") do (
+  if exist "%%~D\ucrt64\bin\gcc.exe" (
+    set "PATH=%%~D\ucrt64\bin;%PATH%"
+    goto :found_msys
+  )
+)
+:found_msys
 
 set "HERE=%~dp0"
 set "SKETCH=%~f1"
